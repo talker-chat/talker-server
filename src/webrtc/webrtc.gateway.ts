@@ -74,12 +74,33 @@ export class WebRtcGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   public afterInit() {}
 
+  @SubscribeMessage("hangup")
+  public hangup(client: Socket): void {
+    const existingSocket = this.data[client.id]
+    if (!existingSocket) return
+
+    if (existingSocket.dstSocketId) {
+      client.emit("remove-user", {
+        socketId: existingSocket.dstSocketId
+      })
+
+      client.to(existingSocket.dstSocketId).emit("remove-user", {
+        socketId: client.id
+      })
+    }
+
+    existingSocket.dstSocketId = null
+    if (this.data[existingSocket.dstSocketId]) this.data[existingSocket.dstSocketId].dstSocketId = null
+
+    this.logger.log(`Hangup was init by ${client.id}`)
+  }
+
   public handleDisconnect(client: Socket): void {
     const existingSocket = this.data[client.id]
     if (!existingSocket) return
 
     if (existingSocket.dstSocketId) {
-      client.to(existingSocket.dstSocketId).emit(`remove-user`, {
+      client.to(existingSocket.dstSocketId).emit("remove-user", {
         socketId: client.id
       })
     }
